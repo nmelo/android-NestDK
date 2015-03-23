@@ -262,12 +262,27 @@ public final class NestAPI implements ValueEventListener {
 
         final Map<String, Object> value = (Map<String, Object>) entry.getValue();
         switch (entry.getKey()) {
+            case Keys.METADATA:
+                updateMetaData(value, listeners);
+                break;
             case Keys.DEVICES:
                 updateDevices(value, listeners);
                 break;
             case Keys.STRUCTURES:
                 updateStructures(value, listeners);
                 break;
+        }
+    }
+
+    @SuppressWarnings("unchcecked")
+    private static void updateMetaData(Map<String, Object> metadataMap, List<Listener> listeners) {
+        final MetaData metaData = new MetaData.Builder().fromMap(metadataMap);
+        if (metaData != null) {
+            for (Listener listener : listeners) {
+                if (listener.getMetaDataListener() != null) {
+                    listener.getMetaDataListener().onMetaDataUpdated(metaData);
+                }
+            }
         }
     }
 

@@ -10,6 +10,8 @@
  */
 package com.nestapi.lib.API;
 
+import android.support.annotation.NonNull;
+
 /**
  * This class is used to build a collection of data listeners for updates
  * to user data (devices and structure details).
@@ -18,11 +20,13 @@ public final class Listener {
     private final ThermostatListener mThermostatListener;
     private final StructureListener mStructureListener;
     private final SmokeCOAlarmListener mSmokeCOAlarmListener;
+    private final MetaDataListener mMetaDataListener;
 
     private Listener(Builder builder) {
         mThermostatListener = builder.mThermostatListener;
         mStructureListener = builder.mStructureListener;
         mSmokeCOAlarmListener = builder.mSmokeCOAlarmListener;
+        mMetaDataListener = builder.mMetaDataListener;
     }
 
     ThermostatListener getThermostatListener() {
@@ -37,10 +41,15 @@ public final class Listener {
         return mSmokeCOAlarmListener;
     }
 
+    MetaDataListener getMetaDataListener() {
+        return mMetaDataListener;
+    }
+
     public static class Builder {
         private ThermostatListener mThermostatListener = null;
         private StructureListener mStructureListener = null;
         private SmokeCOAlarmListener mSmokeCOAlarmListener = null;
+        private MetaDataListener mMetaDataListener = null;
 
         public Builder setThermostatListener(ThermostatListener listener) {
             mThermostatListener = listener;
@@ -57,6 +66,11 @@ public final class Listener {
             return this;
         }
 
+        public Builder setMetaDataListener(MetaDataListener listener) {
+            mMetaDataListener = listener;
+            return this;
+        }
+
         public Listener build() {
             return new Listener(this);
         }
@@ -68,7 +82,7 @@ public final class Listener {
          * @param thermostat the new data for the thermostat (guaranteed
          *                   to be non-null)
          */
-        void onThermostatUpdated(Thermostat thermostat);
+        void onThermostatUpdated(@NonNull Thermostat thermostat);
     }
 
     public interface StructureListener {
@@ -77,7 +91,7 @@ public final class Listener {
          * @param structure the new data for the structure (guaranteed
          *                  to be non-null)
          */
-        void onStructureUpdated(Structure structure);
+        void onStructureUpdated(@NonNull Structure structure);
     }
 
     public interface SmokeCOAlarmListener {
@@ -86,6 +100,15 @@ public final class Listener {
          * @param smokeCOAlarm the new data for the Nest Protect (guaranteed
          *                     to be non-null)
          */
-        void onSmokeCOAlarmUpdated(SmokeCOAlarm smokeCOAlarm);
+        void onSmokeCOAlarmUpdated(@NonNull SmokeCOAlarm smokeCOAlarm);
+    }
+
+    public interface MetaDataListener {
+        /**
+         * Called when updated data is retrieved for the Metadata for a client
+         * @param metaData the new data for the meta data for the client (guaranteed
+         *                 to be non-null)
+         */
+        void onMetaDataUpdated(@NonNull MetaData metaData);
     }
 }

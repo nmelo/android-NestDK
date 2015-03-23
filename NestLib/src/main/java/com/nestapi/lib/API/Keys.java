@@ -12,6 +12,7 @@
 package com.nestapi.lib.API;
 
 class Keys {
+    static final String METADATA = "metadata";
     static final String DEVICES = "devices";
     static final String THERMOSTATS = "thermostats";
     static final String STRUCTURES = "structures";
@@ -28,6 +29,11 @@ class Keys {
     static class ACCESS_TOKEN {
         static final String TOKEN = "access_token";
         static final String EXPIRES_IN = "expires_in";
+    }
+
+    static class META_DATA {
+        static final String ACCESS_TOKEN = "access_token";
+        static final String CLIENT_VERSION = "client_version";
     }
 
     static class THERMOSTAT {
