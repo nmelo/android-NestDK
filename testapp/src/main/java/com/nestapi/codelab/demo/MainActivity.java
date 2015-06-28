@@ -17,9 +17,15 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
 import com.nestapi.lib.API.*;
 import com.nestapi.lib.AuthManager;
 import com.nestapi.lib.ClientMetadata;
+
+import java.util.Date;
 
 public class MainActivity extends Activity implements
         View.OnClickListener,
@@ -48,6 +54,8 @@ public class MainActivity extends Activity implements
     private AccessToken mToken;
     private Thermostat mThermostat;
     private Structure mStructure;
+
+    private CommandQueue commandQueue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -231,7 +239,39 @@ public class MainActivity extends Activity implements
         }
 
         mCurrentTempText.setText(Long.toString(temp));
-        mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), temp, null);
+
+        getQueue();
+
+        //Now add a new command to the queue
+        if (commandQueue != null) {
+
+            if(!commandQueue.acceptsCommands()) {
+                Toast.makeText(getApplicationContext(), "Not accepting commands right now", Toast.LENGTH_LONG).show();
+                return;
+            }
+            final long finalTemp = temp;
+            commandQueue.addCommand(new ThermostatCommand() {
+                @Override
+                public void run() {
+                    mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), finalTemp, null);
+                }
+
+                @Override
+                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                    if(firebaseError != null) {
+
+                        if(firebaseError.getMessage().equals("Too many requests")){
+                            commandQueue.setLimit_reached(true);
+                            commandQueue.setLimit_reached_date(new Date());
+                        }
+                        Toast.makeText(getApplicationContext(), firebaseError.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                    else {
+                        Toast.makeText(getApplicationContext(), String.format("Set temp to: %d", finalTemp), Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
+        }
     }
 
     private void updateView() {
@@ -401,4 +441,17 @@ public class MainActivity extends Activity implements
         mStructure = structure;
         updateView();
     }
+
+    private void getQueue() {
+        if(commandQueue == null) {
+            commandQueue = CommandQueue.readQueue(getApplicationContext(), mThermostat.getDeviceID());
+        }
+    }
+
+    private void saveQueue() {
+        if(commandQueue != null) {
+            CommandQueue.writeQueue(getApplicationContext(), commandQueue);
+        }
+    }
+
 }
