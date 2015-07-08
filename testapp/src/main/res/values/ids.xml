@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="action_logout" type="id">Logout</item>
+    <item name="action_feedback" type="id">Feedback</item>
+</resources>

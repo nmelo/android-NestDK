@@ -1,0 +1,10 @@
+<TextView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:id="@+id/title_TextView"
+    android:textSize="17sp"
+    android:text="Living Room"
+    android:padding="10dp"
+    android:singleLine="true"
+    android:typeface="normal" />

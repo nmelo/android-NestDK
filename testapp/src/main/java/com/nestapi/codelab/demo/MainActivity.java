@@ -10,34 +10,47 @@
  */
 package com.nestapi.codelab.demo;
 
-import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.support.v4.app.ActionBarDrawerToggle;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.firebase.client.Firebase;
-import com.firebase.client.FirebaseError;
 import com.nestapi.lib.API.*;
 import com.nestapi.lib.AuthManager;
 import com.nestapi.lib.ClientMetadata;
 
 import java.util.Date;
 
-public class MainActivity extends Activity implements
+public class MainActivity extends ActionBarActivity implements
         View.OnClickListener,
         NestAPI.AuthenticationListener,
         Listener.StructureListener,
-        Listener.ThermostatListener {
+        Listener.ThermostatListener, AdapterView.OnItemClickListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String THERMOSTAT_KEY = "thermostat_key";
     private static final String STRUCTURE_KEY = "structure_key";
 
     private static final int AUTH_TOKEN_REQUEST_CODE = 101;
+
+    private ActionBarDrawerToggle drawerToggle;
+    private boolean drawerOpen;
+    private DrawerLayout drawerLayout;
+    private ListView drawerList;
 
     private TextView mAmbientTempText;
     private View mSingleControlContainer;
@@ -50,6 +63,7 @@ public class MainActivity extends Activity implements
     private Button mStructureAway;
 
     private Listener mUpdateListener;
+    private Listener mDrawerUpdateListener;
     private NestAPI mNestApi;
     private AccessToken mToken;
     private Thermostat mThermostat;
@@ -60,6 +74,7 @@ public class MainActivity extends Activity implements
     private long mCurrentTargetTempF;
     private long mCurrentTargetTempC;
     private long mPreviousTargetTempF;
+    private ThermostatAdapter arrayAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +90,8 @@ public class MainActivity extends Activity implements
         mRangeControlContainer = findViewById(R.id.range_control);
         mCurrentCoolTempText = (TextView)findViewById(R.id.current_cool_temp);
         mCurrentHeatTempText = (TextView)findViewById(R.id.current_heat_temp);
+        drawerList= (ListView)findViewById(R.id.left_drawer);
+        drawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
 
         mStructureAway.setOnClickListener(mStructureAwayClickListener);
         findViewById(R.id.heat).setOnClickListener(mModeClickListener);
@@ -101,6 +118,81 @@ public class MainActivity extends Activity implements
             mStructure = savedInstanceState.getParcelable(STRUCTURE_KEY);
             updateView();
         }
+
+        if(getResources().getBoolean(R.bool.portrait_only)){
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        }
+
+        initializeDrawer();
+    }
+
+    private void initializeDrawer() {
+
+        // set a custom shadow that overlays the main content when the drawer opens
+        drawerLayout.setDrawerShadow(R.drawable.drawer_shadow, GravityCompat.START);
+        drawerToggle = new ActionBarDrawerToggle(this, drawerLayout, R.drawable.ic_drawer, R.string.drawer_open, R.string.drawer_close) {
+
+            public void onDrawerClosed(View view) {
+                super.onDrawerClosed(view);
+                getSupportActionBar().setTitle(mThermostat.getName());
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+
+                updateView();
+            }
+
+            public void onDrawerOpened(View drawerView) {
+                super.onDrawerOpened(drawerView);
+
+                getSupportActionBar().setTitle("Choose a thermostat");
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+        };
+
+        // Set the drawer toggle as the DrawerListener
+        drawerLayout.setDrawerListener(drawerToggle);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeButtonEnabled(true);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main, menu);
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        if (id == R.id.action_logout) {
+//            logout();
+        }
+        // Pass the event to ActionBarDrawerToggle, if it returns
+        // true, then it has handled the app icon touch event
+        else if (drawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+        else if (id == R.id.action_feedback) {
+//            new Doorbell(this, 393, "aHo9lUVlBdx7I4rDzp9NZPLPoTCnVb0Dndu2m2IXrGJdZhJpiyEx15BKzfAOoXu5").show();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        // If the nav drawer is open, hide action items related to the content view
+
+        drawerOpen = drawerLayout.isDrawerOpen(drawerList);
+        return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
@@ -242,8 +334,6 @@ public class MainActivity extends Activity implements
         }
 
         mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
-
-        //mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), temp, null);
 
         getQueue();
 
@@ -428,6 +518,15 @@ public class MainActivity extends Activity implements
                 .build();
 
         mNestApi.addUpdateListener(mUpdateListener);
+
+        // Set the adapter for the Side Drawer list view
+        arrayAdapter = new ThermostatAdapter(this, R.layout.drawer_list_item, drawerList);
+        mDrawerUpdateListener = new Listener.Builder()
+                .setStructureListener(arrayAdapter)
+                .setThermostatListener(arrayAdapter)
+                .build();
+
+        mNestApi.addUpdateListener(mDrawerUpdateListener);
     }
 
     @Override
@@ -442,6 +541,7 @@ public class MainActivity extends Activity implements
         mThermostat = thermostat;
 
         mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+        this.setTitle(mThermostat.getName());
 
         updateView();
     }
@@ -453,6 +553,8 @@ public class MainActivity extends Activity implements
         updateView();
     }
 
+    // ******************************************************************************************
+    // Get / Save Command Queue
     private void getQueue() {
         if(commandQueue == null) {
             commandQueue = CommandQueue.readQueue(getApplicationContext(), mThermostat.getDeviceID());
@@ -463,6 +565,22 @@ public class MainActivity extends Activity implements
         if(commandQueue != null) {
             CommandQueue.writeQueue(getApplicationContext(), commandQueue);
         }
+    }
+
+    // ******************************************************************************************
+    // Drawer item click
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+
+        mThermostat = (Thermostat) view.getTag();
+        updateView();
+
+        SharedPreferences sharedPref = getSharedPreferences("apppreferences", Context.MODE_MULTI_PROCESS);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("last_thermostat_id", mThermostat.getDeviceID());
+        editor.apply();
+
+        drawerLayout.closeDrawer(drawerList);
     }
 
 }
