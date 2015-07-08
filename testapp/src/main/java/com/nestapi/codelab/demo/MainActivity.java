@@ -57,6 +57,10 @@ public class MainActivity extends Activity implements
 
     private CommandQueue commandQueue;
 
+    private long mCurrentTargetTempF;
+    private long mCurrentTargetTempC;
+    private long mPreviousTargetTempF;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -227,18 +231,19 @@ public class MainActivity extends Activity implements
     }
 
     private void updateTempSingle(View v) {
-        long temp = mThermostat.getTargetTemperatureF();
-
+        mPreviousTargetTempF = mCurrentTargetTempF;
         switch (v.getId()) {
             case R.id.temp_up:
-                temp += 1;
+                mCurrentTargetTempF += 1;
                 break;
             case R.id.temp_down:
-                temp -= 1;
+                mCurrentTargetTempF -= 1;
                 break;
         }
 
-        mCurrentTempText.setText(Long.toString(temp));
+        mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
+
+        //mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), temp, null);
 
         getQueue();
 
@@ -249,29 +254,32 @@ public class MainActivity extends Activity implements
                 Toast.makeText(getApplicationContext(), "Not accepting commands right now", Toast.LENGTH_LONG).show();
                 return;
             }
-            final long finalTemp = temp;
             commandQueue.addCommand(new ThermostatCommand() {
                 @Override
                 public void run() {
-                    mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), finalTemp, null);
+                    mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), mCurrentTargetTempF, this);
                 }
 
                 @Override
-                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
-                    if(firebaseError != null) {
+                public void onError(int errorCode) {
+                    if(errorCode == 429) { // Too many requests
+                        commandQueue.setLimit_reached(true);
+                        commandQueue.setLimit_reached_date(new Date());
+                    }
+                    Toast.makeText(getApplicationContext(), "Too many requests", Toast.LENGTH_LONG).show();
+                    mCurrentTargetTempF = mPreviousTargetTempF;
+                    mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
+                }
 
-                        if(firebaseError.getMessage().equals("Too many requests")){
-                            commandQueue.setLimit_reached(true);
-                            commandQueue.setLimit_reached_date(new Date());
-                        }
-                        Toast.makeText(getApplicationContext(), firebaseError.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                    else {
-                        Toast.makeText(getApplicationContext(), String.format("Set temp to: %d", finalTemp), Toast.LENGTH_LONG).show();
-                    }
+                @Override
+                public void onComplete() {
+                    mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+                    Toast.makeText(getApplicationContext(), String.format("Set temp to: %d", mCurrentTargetTempF), Toast.LENGTH_LONG).show();
                 }
             });
         }
+
+        saveQueue();
     }
 
     private void updateView() {
@@ -432,6 +440,9 @@ public class MainActivity extends Activity implements
     public void onThermostatUpdated(Thermostat thermostat) {
         Log.v(TAG, String.format("Thermostat (%s) updated.", thermostat.getDeviceID()));
         mThermostat = thermostat;
+
+        mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+
         updateView();
     }
 

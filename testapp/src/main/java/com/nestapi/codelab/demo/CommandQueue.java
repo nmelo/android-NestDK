@@ -213,14 +213,20 @@ public class CommandQueue implements Serializable {
         for (Date date: dates) {
             ThermostatCommand command = new ThermostatCommand() {
                 @Override
-                public void run() {
+                public void onComplete() {
 
                 }
 
                 @Override
-                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                public void onError(int errorCode) {
 
                 }
+
+                @Override
+                public void run() {
+
+                }
+
             };
             command.date = date;
             commands.add(command);

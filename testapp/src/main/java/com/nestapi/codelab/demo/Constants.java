@@ -12,7 +12,7 @@
 package com.nestapi.codelab.demo;
 
 public class Constants {
-    public static final String CLIENT_ID = "<insert-your-client-id-here>";
-    public static final String CLIENT_SECRET = "<insert-your-client-secret-here>";
-    public static final String REDIRECT_URL = "<insert-your-redirect-url-here>";
+    public static final String CLIENT_ID = "b0e6c0a1-b18c-42c6-aec7-62d3771f7fb6";
+    public static final String CLIENT_SECRET = "7XdmpGXmyDtpEOi2M9c0UPdfg";
+    public static final String REDIRECT_URL = "https://www.bayithomeautomation.com/";
 }

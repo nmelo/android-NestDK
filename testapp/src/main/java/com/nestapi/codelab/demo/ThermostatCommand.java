@@ -1,18 +1,21 @@
 package com.nestapi.codelab.demo;
 
 import com.firebase.client.Firebase;
+import com.nestapi.lib.API.NestAPI;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
 
-public abstract class ThermostatCommand implements Serializable, Firebase.CompletionListener {
+public abstract class ThermostatCommand implements Serializable, NestAPI.CompletionListener{
     public Date date;
 
     public ThermostatCommand() {
         date = new Date();
     }
     public abstract void run();
+    public abstract void onComplete();
+    public abstract void onError(int errorCode);
 
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
         out.writeObject(date);
