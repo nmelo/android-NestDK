@@ -527,4 +527,5 @@ public final class Thermostat extends BaseDevice {
             return UNKNOWN;
         }
     }
+
 }

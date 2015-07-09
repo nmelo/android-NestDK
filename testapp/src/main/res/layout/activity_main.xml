@@ -15,14 +15,9 @@
         android:layout_height="match_parent">
 
 
-        <TextView
-                android:id="@+id/structure_name"
-                android:layout_alignParentTop="true"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
         <Button
                 android:id="@+id/structure_away_btn"
-                android:layout_below="@id/structure_name"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
 
         <TextView
                 android:id="@+id/ambient_temp"
@@ -68,13 +63,44 @@
                 android:layout_above="@id/hvac_mode_control_container"/>
 
     </RelativeLayout>
-    <!-- The navigation drawer -->
-    <ListView android:id="@+id/left_drawer"
+    <RelativeLayout android:id="@+id/left_drawer"
         android:layout_width="240dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:choiceMode="singleChoice"
-        android:divider="@android:color/darker_gray"
-        android:dividerHeight="1dp"
-        android:background="#fff" />
+        android:background="#fff">
+        <!-- The navigation drawer -->
+
+        <TextView
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="Structures:"
+            android:id="@+id/textView"
+            android:layout_marginTop="10dp"
+            android:layout_marginLeft="10dp" />
+
+        <Spinner
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/structure_spinner"
+            android:layout_below="@+id/textView" />
+
+        <TextView
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="Thermostats:"
+            android:id="@+id/textView2"
+            android:layout_below="@+id/structure_spinner"
+            android:layout_marginTop="10dp"
+            android:layout_marginLeft="10dp" />
+
+        <ListView android:id="@+id/drawer_list"
+            android:layout_width="240dp"
+            android:layout_height="fill_parent"
+            android:choiceMode="singleChoice"
+            android:divider="@android:color/darker_gray"
+            android:dividerHeight="1dp"
+            android:background="#fff"
+            android:layout_below="@+id/textView2" />
+
+    </RelativeLayout>
 </android.support.v4.widget.DrawerLayout>

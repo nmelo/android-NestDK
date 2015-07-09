@@ -14,6 +14,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.database.DataSetObserver;
 import android.os.Bundle;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.view.GravityCompat;
@@ -23,9 +24,15 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckedTextView;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
+import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,13 +40,15 @@ import com.nestapi.lib.API.*;
 import com.nestapi.lib.AuthManager;
 import com.nestapi.lib.ClientMetadata;
 
+import java.util.ArrayList;
 import java.util.Date;
 
 public class MainActivity extends ActionBarActivity implements
         View.OnClickListener,
         NestAPI.AuthenticationListener,
         Listener.StructureListener,
-        Listener.ThermostatListener, AdapterView.OnItemClickListener {
+        Listener.ThermostatListener, AdapterView.OnItemClickListener,
+        AdapterView.OnItemSelectedListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String THERMOSTAT_KEY = "thermostat_key";
@@ -48,14 +57,14 @@ public class MainActivity extends ActionBarActivity implements
     private static final int AUTH_TOKEN_REQUEST_CODE = 101;
 
     private ActionBarDrawerToggle drawerToggle;
-    private boolean drawerOpen;
     private DrawerLayout drawerLayout;
+    private RelativeLayout leftLayout;
     private ListView drawerList;
+    private Spinner structureSpinner;
 
     private TextView mAmbientTempText;
     private View mSingleControlContainer;
     private TextView mCurrentTempText;
-    private TextView mStructureNameText;
     private View mThermostatView;
     private View mRangeControlContainer;
     private TextView mCurrentCoolTempText;
@@ -63,7 +72,6 @@ public class MainActivity extends ActionBarActivity implements
     private Button mStructureAway;
 
     private Listener mUpdateListener;
-    private Listener mDrawerUpdateListener;
     private NestAPI mNestApi;
     private AccessToken mToken;
     private Thermostat mThermostat;
@@ -74,24 +82,40 @@ public class MainActivity extends ActionBarActivity implements
     private long mCurrentTargetTempF;
     private long mCurrentTargetTempC;
     private long mPreviousTargetTempF;
-    private ThermostatAdapter arrayAdapter;
+
+    private ArrayList<Thermostat> thermostatList;
+    private ArrayList<Structure> structureList;
+
+    private ArrayList<String> thermostatNamesList;
+    private ArrayList<String> structureNamesList;
+
+    private ArrayAdapter<String> thermostatAdapter;
+    private ArrayAdapter<String> structureAdapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        thermostatList = new ArrayList<Thermostat>();
+        structureList = new ArrayList<Structure>();
+
+        thermostatNamesList = new ArrayList<String>();
+        structureNamesList = new ArrayList<String>();
+
         mThermostatView = findViewById(R.id.thermostat_view);
         mSingleControlContainer = findViewById(R.id.single_control);
         mCurrentTempText = (TextView)findViewById(R.id.current_temp);
-        mStructureNameText = (TextView)findViewById(R.id.structure_name);
         mAmbientTempText = (TextView)findViewById(R.id.ambient_temp);
         mStructureAway = (Button)findViewById(R.id.structure_away_btn);
         mRangeControlContainer = findViewById(R.id.range_control);
         mCurrentCoolTempText = (TextView)findViewById(R.id.current_cool_temp);
         mCurrentHeatTempText = (TextView)findViewById(R.id.current_heat_temp);
-        drawerList= (ListView)findViewById(R.id.left_drawer);
+        drawerList= (ListView)findViewById(R.id.drawer_list);
         drawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
+        leftLayout = (RelativeLayout)findViewById(R.id.left_drawer);
+        structureSpinner = (Spinner)findViewById(R.id.structure_spinner);
 
         mStructureAway.setOnClickListener(mStructureAwayClickListener);
         findViewById(R.id.heat).setOnClickListener(mModeClickListener);
@@ -191,7 +215,7 @@ public class MainActivity extends ActionBarActivity implements
     public boolean onPrepareOptionsMenu(Menu menu) {
         // If the nav drawer is open, hide action items related to the content view
 
-        drawerOpen = drawerLayout.isDrawerOpen(drawerList);
+        boolean drawerOpen = drawerLayout.isDrawerOpen(leftLayout);
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -323,6 +347,12 @@ public class MainActivity extends ActionBarActivity implements
     }
 
     private void updateTempSingle(View v) {
+
+        if(mStructure.getAwayState() == Structure.AwayState.AWAY) {
+            Toast.makeText(getApplicationContext(), "Cannot change target temperature while structure is away", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         mPreviousTargetTempF = mCurrentTargetTempF;
         switch (v.getId()) {
             case R.id.temp_up:
@@ -364,6 +394,7 @@ public class MainActivity extends ActionBarActivity implements
                 @Override
                 public void onComplete() {
                     mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+                    updateView();
                     Toast.makeText(getApplicationContext(), String.format("Set temp to: %d", mCurrentTargetTempF), Toast.LENGTH_LONG).show();
                 }
             });
@@ -386,7 +417,6 @@ public class MainActivity extends ActionBarActivity implements
 
     private void updateStructureViews() {
         if (mStructure != null) {
-            mStructureNameText.setText(mStructure.getName());
             mStructureAway.setText(mStructure.getAwayState().getKey());
         }
     }
@@ -518,15 +548,6 @@ public class MainActivity extends ActionBarActivity implements
                 .build();
 
         mNestApi.addUpdateListener(mUpdateListener);
-
-        // Set the adapter for the Side Drawer list view
-        arrayAdapter = new ThermostatAdapter(this, R.layout.drawer_list_item, drawerList);
-        mDrawerUpdateListener = new Listener.Builder()
-                .setStructureListener(arrayAdapter)
-                .setThermostatListener(arrayAdapter)
-                .build();
-
-        mNestApi.addUpdateListener(mDrawerUpdateListener);
     }
 
     @Override
@@ -537,20 +558,84 @@ public class MainActivity extends ActionBarActivity implements
 
     @Override
     public void onThermostatUpdated(Thermostat thermostat) {
-        Log.v(TAG, String.format("Thermostat (%s) updated.", thermostat.getDeviceID()));
-        mThermostat = thermostat;
+        Log.i(TAG, String.format("Thermostat (%s) updated.", thermostat.getName()));
 
-        mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
-        this.setTitle(mThermostat.getName());
+        boolean found = false;
+        for(int i = 0; i < thermostatList.size(); i++) {
+            if (thermostatList.get(i).getDeviceID().equals(thermostat.getDeviceID())) {
+                thermostatList.set(i, thermostat);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            thermostatList.add(thermostat);
+        }
 
-        updateView();
+        // Add the thermostat to the names list, if it belongs to the current structure
+        if (mStructure != null
+                && thermostat.getStructureID().equals(mStructure.getStructureID())
+                && ! thermostatNamesList.contains(thermostat.getName())) {
+            thermostatNamesList.add(thermostat.getName());
+        }
+
+        // Initialize the current thermostat
+        if (mThermostat == null) {
+            mThermostat = thermostat;
+        }
+        if(mThermostat.getDeviceID().equals(thermostat.getDeviceID())) {
+            mThermostat = thermostat;
+        }
+
+        // Setup drawer as soon as the first thermostat becomes available
+        if ( drawerList.getAdapter() == null ) {
+            thermostatAdapter = new ArrayAdapter<String>(this, R.layout.drawer_list_item, thermostatNamesList);
+
+            drawerList.setAdapter(thermostatAdapter);
+            // Set the list's click listener
+            drawerList.setOnItemClickListener(this);
+        }
     }
 
     @Override
     public void onStructureUpdated(Structure structure) {
-        Log.v(TAG, String.format("Structure (%s) updated.", structure.getStructureID()));
-        mStructure = structure;
-        updateView();
+        Log.i(TAG, String.format("Structure (%s) updated.", structure.getName()));
+
+        boolean found = false;
+        for(int i = 0; i < structureList.size(); i++) {
+            if (structureList.get(i).getStructureID().equals(structure.getStructureID())) {
+                structureList.set(i, structure);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            structureList.add(structure);
+        }
+
+        if(mStructure == null) {
+            mStructure = structure;
+        }
+
+        // Update the current structure if the update was for it
+        if (structure.getStructureID().equals(mStructure.getStructureID())) {
+            mStructure = structure;
+            updateView();
+        }
+
+        // Add structure to the names list for use on the adapter
+        if (! structureNamesList.contains(structure.getName())) {
+            structureNamesList.add(structure.getName());
+        }
+
+        // Setup drawer as soon as the first structure becomes available
+        if ( structureSpinner.getAdapter() == null ) {
+            structureAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, structureNamesList);
+
+            structureAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            structureSpinner.setAdapter(structureAdapter);
+            structureSpinner.setOnItemSelectedListener(this);
+        }
     }
 
     // ******************************************************************************************
@@ -568,19 +653,60 @@ public class MainActivity extends ActionBarActivity implements
     }
 
     // ******************************************************************************************
+    // Spinner item click
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+
+        // Set the default structure
+        mStructure = structureList.get(position);
+
+        // Refresh the drawer list
+        thermostatNamesList.clear();
+        for (Thermostat thermostat: thermostatList) {
+            if (thermostat.getStructureID().equals(mStructure.getStructureID())) {
+                thermostatNamesList.add(thermostat.getName());
+            }
+        }
+        thermostatAdapter.notifyDataSetChanged();
+
+        // Set the first thermostat in the structure as default
+        for (Thermostat thermostat: thermostatList) {
+            if (thermostat.getStructureID().equals(mStructure.getStructureID())) {
+                mThermostat = thermostat;
+                mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+                this.setTitle(mThermostat.getName());
+                updateView();
+            }
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
+        // NOP
+    }
+
+    // ******************************************************************************************
     // Drawer item click
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
 
-        mThermostat = (Thermostat) view.getTag();
-        updateView();
+        TextView textView = (TextView)view;
+        for (int j = 0; j < thermostatList.size(); j++ ) {
+            if (thermostatList.get(j).getName().equals(textView.getText())) {
+                mThermostat = thermostatList.get(j);
+                mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+                setTitle(mThermostat.getName());
+                updateView();
+                break;
+            }
+        }
 
         SharedPreferences sharedPref = getSharedPreferences("apppreferences", Context.MODE_MULTI_PROCESS);
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("last_thermostat_id", mThermostat.getDeviceID());
         editor.apply();
 
-        drawerLayout.closeDrawer(drawerList);
+        drawerLayout.closeDrawer(leftLayout);
     }
 
 }
