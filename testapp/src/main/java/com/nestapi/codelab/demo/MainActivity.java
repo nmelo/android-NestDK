@@ -1,20 +1,9 @@
-/**
- * Copyright 2014 Nest Labs Inc. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software * distributed under
- * the License is distributed on an "AS IS" BASIS, * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.nestapi.codelab.demo;
 
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
-import android.database.DataSetObserver;
 import android.os.Bundle;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.view.GravityCompat;
@@ -24,15 +13,12 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckedTextView;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -80,7 +66,6 @@ public class MainActivity extends ActionBarActivity implements
     private CommandQueue commandQueue;
 
     private long mCurrentTargetTempF;
-    private long mCurrentTargetTempC;
     private long mPreviousTargetTempF;
 
     private ArrayList<Thermostat> thermostatList;
@@ -158,7 +143,12 @@ public class MainActivity extends ActionBarActivity implements
 
             public void onDrawerClosed(View view) {
                 super.onDrawerClosed(view);
-                getSupportActionBar().setTitle(mThermostat.getName());
+                if (mThermostat != null) {
+                    getSupportActionBar().setTitle(mThermostat.getName());
+                }
+                else {
+                    getSupportActionBar().setTitle(mStructure.getName());
+                }
                 invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
 
                 updateView();
@@ -167,7 +157,7 @@ public class MainActivity extends ActionBarActivity implements
             public void onDrawerOpened(View drawerView) {
                 super.onDrawerOpened(drawerView);
 
-                getSupportActionBar().setTitle("Choose a thermostat");
+                getSupportActionBar().setTitle("Your homes");
                 invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
             }
         };
@@ -184,38 +174,14 @@ public class MainActivity extends ActionBarActivity implements
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-
-        return true;
-    }
-
-    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_logout) {
-//            logout();
-        }
-        // Pass the event to ActionBarDrawerToggle, if it returns
-        // true, then it has handled the app icon touch event
-        else if (drawerToggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        else if (id == R.id.action_feedback) {
-//            new Doorbell(this, 393, "aHo9lUVlBdx7I4rDzp9NZPLPoTCnVb0Dndu2m2IXrGJdZhJpiyEx15BKzfAOoXu5").show();
-        }
-        return super.onOptionsItemSelected(item);
+        return drawerToggle.onOptionsItemSelected(item) || super.onOptionsItemSelected(item);
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         // If the nav drawer is open, hide action items related to the content view
 
-        boolean drawerOpen = drawerLayout.isDrawerOpen(leftLayout);
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -259,7 +225,17 @@ public class MainActivity extends ActionBarActivity implements
                     return;
             }
 
-            mNestApi.setStructureAway(mStructure.getStructureID(), awayState, null);
+            mNestApi.setStructureAway(mStructure.getStructureID(), awayState, new NestAPI.CompletionListener() {
+                @Override
+                public void onComplete() {
+                    Log.i(TAG, "Done setting to AWAY");
+                }
+
+                @Override
+                public void onError(int errorCode, String message) {
+                    Log.i(TAG, String.format("Error setting to away: %s", message));
+                }
+            });
         }
     };
 
@@ -381,12 +357,19 @@ public class MainActivity extends ActionBarActivity implements
                 }
 
                 @Override
-                public void onError(int errorCode) {
-                    if(errorCode == 429) { // Too many requests
+                public void onError(int errorCode, String message) {
+                    if(message.equals("Too many requests")) { // Too many requests
                         commandQueue.setLimit_reached(true);
                         commandQueue.setLimit_reached_date(new Date());
+                        Toast.makeText(getApplicationContext(), "Too many requests", Toast.LENGTH_LONG).show();
                     }
-                    Toast.makeText(getApplicationContext(), "Too many requests", Toast.LENGTH_LONG).show();
+                    else if (message.equals("Temperature F value too high for lock temperature")){
+                        Toast.makeText(getApplicationContext(), "Temperature F value too high for lock temperature", Toast.LENGTH_LONG).show();
+                    }
+                    else if (message.equals("Temperature F value too low for lock temperature")) {
+                        Toast.makeText(getApplicationContext(), "Temperature F value too low for lock temperature", Toast.LENGTH_LONG).show();
+                    }
+
                     mCurrentTargetTempF = mPreviousTargetTempF;
                     mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
                 }
@@ -556,37 +539,10 @@ public class MainActivity extends ActionBarActivity implements
         mNestApi.removeUpdateListener(mUpdateListener);
     }
 
-    @Override
-    public void onThermostatUpdated(Thermostat thermostat) {
-        Log.i(TAG, String.format("Thermostat (%s) updated.", thermostat.getName()));
+    // ******************************************************************************************
+    // Handle nest updates
 
-        boolean found = false;
-        for(int i = 0; i < thermostatList.size(); i++) {
-            if (thermostatList.get(i).getDeviceID().equals(thermostat.getDeviceID())) {
-                thermostatList.set(i, thermostat);
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            thermostatList.add(thermostat);
-        }
-
-        // Add the thermostat to the names list, if it belongs to the current structure
-        if (mStructure != null
-                && thermostat.getStructureID().equals(mStructure.getStructureID())
-                && ! thermostatNamesList.contains(thermostat.getName())) {
-            thermostatNamesList.add(thermostat.getName());
-        }
-
-        // Initialize the current thermostat
-        if (mThermostat == null) {
-            mThermostat = thermostat;
-        }
-        if(mThermostat.getDeviceID().equals(thermostat.getDeviceID())) {
-            mThermostat = thermostat;
-        }
-
+    private void setupThermostatAdapter() {
         // Setup drawer as soon as the first thermostat becomes available
         if ( drawerList.getAdapter() == null ) {
             thermostatAdapter = new ArrayAdapter<String>(this, R.layout.drawer_list_item, thermostatNamesList);
@@ -597,37 +553,7 @@ public class MainActivity extends ActionBarActivity implements
         }
     }
 
-    @Override
-    public void onStructureUpdated(Structure structure) {
-        Log.i(TAG, String.format("Structure (%s) updated.", structure.getName()));
-
-        boolean found = false;
-        for(int i = 0; i < structureList.size(); i++) {
-            if (structureList.get(i).getStructureID().equals(structure.getStructureID())) {
-                structureList.set(i, structure);
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            structureList.add(structure);
-        }
-
-        if(mStructure == null) {
-            mStructure = structure;
-        }
-
-        // Update the current structure if the update was for it
-        if (structure.getStructureID().equals(mStructure.getStructureID())) {
-            mStructure = structure;
-            updateView();
-        }
-
-        // Add structure to the names list for use on the adapter
-        if (! structureNamesList.contains(structure.getName())) {
-            structureNamesList.add(structure.getName());
-        }
-
+    private void setupStructureAdapter() {
         // Setup drawer as soon as the first structure becomes available
         if ( structureSpinner.getAdapter() == null ) {
             structureAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, structureNamesList);
@@ -638,19 +564,119 @@ public class MainActivity extends ActionBarActivity implements
         }
     }
 
-    // ******************************************************************************************
-    // Get / Save Command Queue
-    private void getQueue() {
-        if(commandQueue == null) {
-            commandQueue = CommandQueue.readQueue(getApplicationContext(), mThermostat.getDeviceID());
+    private void updateAdapters() {
+        if(thermostatAdapter != null) {
+            thermostatAdapter.notifyDataSetChanged();
+        }
+        if(structureAdapter != null) {
+            structureAdapter.notifyDataSetChanged();
         }
     }
 
-    private void saveQueue() {
-        if(commandQueue != null) {
-            CommandQueue.writeQueue(getApplicationContext(), commandQueue);
+    private void updateStructureNames() {
+        structureNamesList.clear();
+        for(Structure s:structureList){
+            structureNamesList.add(s.getName());
         }
     }
+
+    private void updateThermostatNames() {
+        if (mStructure == null) {
+            return;
+        }
+
+        // Refresh the drawer list
+        boolean found = false;
+        thermostatNamesList.clear();
+        for (Thermostat thermostat: thermostatList) {
+            if (thermostat.getStructureID().equals(mStructure.getStructureID())) {
+                thermostatNamesList.add(thermostat.getName());
+                found = true;
+            }
+        }
+        if(!found) {
+            thermostatNamesList.add("(empty home)");
+        }
+        updateAdapters();
+    }
+
+    private void updateStructureList(Structure structure) {
+        boolean found = false;
+        for(int i = 0; i < structureList.size(); i++) {
+            if (structureList.get(i).getStructureID().equals(structure.getStructureID())) {
+                structureList.set(i, structure);
+                found = true;
+                updateAdapters();
+                break;
+            }
+        }
+        if (!found) {
+            structureList.add(structure);
+            updateAdapters();
+        }
+    }
+
+    private void updateCurrentStructure(Structure structure) {
+        if (mStructure == null) {
+            mStructure = structure;
+        }
+        // Update the current structure if the update was for it
+        if (structure.getStructureID().equals(mStructure.getStructureID())) {
+            mStructure = structure;
+            updateView();
+        }
+    }
+
+    private void updateCurrentThermostat(Thermostat thermostat) {
+        // Initialize the current thermostat
+        if (mThermostat == null) {
+            mThermostat = thermostat;
+        }
+        if(mThermostat.getDeviceID().equals(thermostat.getDeviceID())) {
+            mThermostat = thermostat;
+            getSupportActionBar().setTitle(thermostat.getName());
+            updateView();
+        }
+    }
+
+    private void updateThermostatList(Thermostat thermostat) {
+        boolean found = false;
+        for(int i = 0; i < thermostatList.size(); i++) {
+            if (thermostatList.get(i).getDeviceID().equals(thermostat.getDeviceID())) {
+                thermostatList.set(i, thermostat);
+                updateThermostatNames();
+                updateAdapters();
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            thermostatList.add(thermostat);
+            updateThermostatNames();
+            updateAdapters();
+        }
+    }
+
+    @Override
+    public void onStructureUpdated(Structure structure) {
+        Log.i(TAG, String.format("Structure (%s) updated.", structure.getName()));
+        Log.i(TAG, String.format("### %s went to %s", structure.getName(), structure.getAwayState().toString()));
+
+        updateStructureList(structure);
+        updateCurrentStructure(structure);
+        updateStructureNames();
+        setupStructureAdapter();
+    }
+
+    @Override
+    public void onThermostatUpdated(Thermostat thermostat) {
+        Log.i(TAG, String.format("Thermostat (%s) updated.", thermostat.getName()));
+
+        updateThermostatList(thermostat);
+        updateCurrentThermostat(thermostat);
+        setupThermostatAdapter();
+    }
+
 
     // ******************************************************************************************
     // Spinner item click
@@ -660,23 +686,26 @@ public class MainActivity extends ActionBarActivity implements
         // Set the default structure
         mStructure = structureList.get(position);
 
-        // Refresh the drawer list
-        thermostatNamesList.clear();
-        for (Thermostat thermostat: thermostatList) {
-            if (thermostat.getStructureID().equals(mStructure.getStructureID())) {
-                thermostatNamesList.add(thermostat.getName());
+        // Rebuild the list of thermostats for this structure
+        updateThermostatNames();
+
+        if( mStructure.getThermostatIDs().size() != 0) {
+
+            // Set the first thermostat in the structure as default
+            for (Thermostat thermostat : thermostatList) {
+                if (thermostat.getStructureID().equals(mStructure.getStructureID())) {
+                    mThermostat = thermostat;
+                    mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+                    getSupportActionBar().setTitle(mThermostat.getName());
+                    updateView();
+                    break;
+                }
             }
         }
-        thermostatAdapter.notifyDataSetChanged();
-
-        // Set the first thermostat in the structure as default
-        for (Thermostat thermostat: thermostatList) {
-            if (thermostat.getStructureID().equals(mStructure.getStructureID())) {
-                mThermostat = thermostat;
-                mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
-                this.setTitle(mThermostat.getName());
-                updateView();
-            }
+        else {
+            mThermostat = null;
+            getSupportActionBar().setTitle("Empty structure");
+            updateView();
         }
     }
 
@@ -695,18 +724,38 @@ public class MainActivity extends ActionBarActivity implements
             if (thermostatList.get(j).getName().equals(textView.getText())) {
                 mThermostat = thermostatList.get(j);
                 mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
-                setTitle(mThermostat.getName());
+                getSupportActionBar().setTitle(mThermostat.getName());
                 updateView();
                 break;
             }
         }
 
+        storeLastThermostat();
+
+        drawerLayout.closeDrawer(leftLayout);
+    }
+
+    private void storeLastThermostat() {
+        if(mThermostat == null) return;
+
         SharedPreferences sharedPref = getSharedPreferences("apppreferences", Context.MODE_MULTI_PROCESS);
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("last_thermostat_id", mThermostat.getDeviceID());
         editor.apply();
+    }
 
-        drawerLayout.closeDrawer(leftLayout);
+    // ******************************************************************************************
+    // Get / Save Command Queue
+    private void getQueue() {
+        if(commandQueue == null) {
+            commandQueue = CommandQueue.readQueue(getApplicationContext(), mThermostat.getDeviceID());
+        }
+    }
+
+    private void saveQueue() {
+        if(commandQueue != null) {
+            CommandQueue.writeQueue(getApplicationContext(), commandQueue);
+        }
     }
 
 }

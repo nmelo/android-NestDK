@@ -1,6 +1,5 @@
 package com.nestapi.codelab.demo;
 
-import com.firebase.client.Firebase;
 import com.nestapi.lib.API.NestAPI;
 
 import java.io.IOException;
@@ -15,7 +14,7 @@ public abstract class ThermostatCommand implements Serializable, NestAPI.Complet
     }
     public abstract void run();
     public abstract void onComplete();
-    public abstract void onError(int errorCode);
+    public abstract void onError(int errorCode, String message);
 
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
         out.writeObject(date);
