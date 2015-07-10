@@ -361,13 +361,13 @@ public class MainActivity extends ActionBarActivity implements
                     if(message.equals("Too many requests")) { // Too many requests
                         commandQueue.setLimit_reached(true);
                         commandQueue.setLimit_reached_date(new Date());
-                        Toast.makeText(getApplicationContext(), "Too many requests", Toast.LENGTH_LONG).show();
+                        Toast.makeText(getApplicationContext(), "You have reached Nest's limits for this hour. Try again later.", Toast.LENGTH_LONG).show();
                     }
                     else if (message.equals("Temperature F value too high for lock temperature")){
-                        Toast.makeText(getApplicationContext(), "Temperature F value too high for lock temperature", Toast.LENGTH_LONG).show();
+                        Toast.makeText(getApplicationContext(), "Temperature F value too high for lock temperature.", Toast.LENGTH_LONG).show();
                     }
                     else if (message.equals("Temperature F value too low for lock temperature")) {
-                        Toast.makeText(getApplicationContext(), "Temperature F value too low for lock temperature", Toast.LENGTH_LONG).show();
+                        Toast.makeText(getApplicationContext(), "Temperature F value too low for lock temperature.", Toast.LENGTH_LONG).show();
                     }
 
                     mCurrentTargetTempF = mPreviousTargetTempF;
@@ -378,7 +378,7 @@ public class MainActivity extends ActionBarActivity implements
                 public void onComplete() {
                     mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
                     updateView();
-                    Toast.makeText(getApplicationContext(), String.format("Set temp to: %d", mCurrentTargetTempF), Toast.LENGTH_LONG).show();
+//                    Toast.makeText(getApplicationContext(), String.format("Set temp to: %d", mCurrentTargetTempF), Toast.LENGTH_LONG).show();
                 }
             });
         }
