@@ -347,7 +347,9 @@ public class MainActivity extends ActionBarActivity implements
         if (commandQueue != null) {
 
             if(!commandQueue.acceptsCommands()) {
-                Toast.makeText(getApplicationContext(), "Not accepting commands right now", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), "Limit reached. Please try again later.", Toast.LENGTH_SHORT).show();
+                mCurrentTargetTempF = mPreviousTargetTempF;
+                mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
                 return;
             }
             commandQueue.addCommand(new ThermostatCommand() {
