@@ -30,12 +30,12 @@ public class CommandQueue implements Serializable {
     public CommandQueue() {
         commands = new ArrayList<ThermostatCommand>();
         commandTimer = new Timer("commandTimer_" + name, true);
-        holdTime = 5000;
+        holdTime = 2000;
     }
 
     public void initialize() {
         commandTimer = new Timer("commandTimer_" + name, true);
-        holdTime = 5000;
+        holdTime = 2000;
     }
 
     public boolean acceptsCommands() {
