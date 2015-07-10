@@ -3,9 +3,6 @@ package com.nestapi.codelab.demo;
 import android.content.Context;
 import android.util.Log;
 
-import com.firebase.client.Firebase;
-import com.firebase.client.FirebaseError;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -213,14 +210,20 @@ public class CommandQueue implements Serializable {
         for (Date date: dates) {
             ThermostatCommand command = new ThermostatCommand() {
                 @Override
-                public void run() {
+                public void onComplete() {
 
                 }
 
                 @Override
-                public void onComplete(FirebaseError firebaseError, Firebase firebase) {
+                public void onError(int errorCode, String message) {
 
                 }
+
+                @Override
+                public void run() {
+
+                }
+
             };
             command.date = date;
             commands.add(command);

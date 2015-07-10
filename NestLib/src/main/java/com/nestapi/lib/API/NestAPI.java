@@ -31,7 +31,7 @@ public final class NestAPI implements ValueEventListener {
 
     public interface CompletionListener {
         void onComplete();
-        void onError(int errorCode);
+        void onError(int errorCode, String message);
     }
 
     private static NestAPI sFirebaseManager = null;
@@ -367,7 +367,7 @@ public final class NestAPI implements ValueEventListener {
                 mCompletionListener.onComplete();
             } else {
                 Log.w(TAG, "Error: " + firebaseError.getCode() + " " + firebaseError.getMessage());
-                mCompletionListener.onError(firebaseError.getCode());
+                mCompletionListener.onError(firebaseError.getCode(), firebaseError.getMessage());
             }
         }
     }
