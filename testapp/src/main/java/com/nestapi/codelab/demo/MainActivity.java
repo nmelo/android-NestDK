@@ -68,6 +68,9 @@ public class MainActivity extends ActionBarActivity implements
     private long mCurrentTargetTempF;
     private long mPreviousTargetTempF;
 
+	private double mCurrentTargetTempC;
+    private double mPreviousTargetTempC;
+
     private ArrayList<Thermostat> thermostatList;
     private ArrayList<Structure> structureList;
 
@@ -234,6 +237,7 @@ public class MainActivity extends ActionBarActivity implements
                 @Override
                 public void onError(int errorCode, String message) {
                     Log.i(TAG, String.format("Error setting to away: %s", message));
+					Toast.makeText(getApplicationContext(), String.format("Error setting to away: %s", message), Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -295,34 +299,115 @@ public class MainActivity extends ActionBarActivity implements
 
     private void updateTempRange(View v) {
         String thermostatID = mThermostat.getDeviceID();
-        long tempHigh = mThermostat.getTargetTemperatureHighF();
-        long tempLow = mThermostat.getTargetTemperatureLowF();
+		double difference;
+		long tempHighF = 0;
+		long tempLowF = 0;
+		double tempHighC = 0;
+		double tempLowC = 0;
+
+		if (mThermostat.getTemperatureScale().equals( "F" )) {
+			difference = 3;
+			tempHighF = mThermostat.getTargetTemperatureHighF();
+			tempLowF = mThermostat.getTargetTemperatureLowF();
+		}
+		else {
+			difference = 1.5;
+			tempHighC = mThermostat.getTargetTemperatureHighC();
+			tempLowC = mThermostat.getTargetTemperatureLowC();
+		}
 
         switch (v.getId()) {
             case R.id.temp_cool_down:
-                tempLow -= 1;
-                mNestApi.setTargetTemperatureLowF(thermostatID, tempLow, null);
-                mCurrentCoolTempText.setText(Long.toString(tempLow));
+                if (mThermostat.getTemperatureScale().equals( "F" )) {
+					tempLowF -= 1;
+					if (restrictRange(difference, tempHighF, tempLowF)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 3 degrees F.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureLowF(thermostatID, tempLowF, null);
+					mCurrentCoolTempText.setText(Long.toString(tempLowF));
+				}
+				else {
+					tempLowC -= 0.5;
+					if (restrictRange(difference, tempHighC, tempLowC)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 1.5 degrees C.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureLowC(thermostatID, tempLowC, null);
+					mCurrentCoolTempText.setText(Double.toString(tempLowC));
+				}
                 break;
             case R.id.temp_cool_up:
-                tempLow += 1;
-                mNestApi.setTargetTemperatureLowF(thermostatID, tempLow, null);
-                mCurrentCoolTempText.setText(Long.toString(tempLow));
-                break;
+				if (mThermostat.getTemperatureScale().equals( "F" )) {
+					tempLowF += 1;
+					if (restrictRange(difference, tempHighF, tempLowF)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 3 degrees F.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureLowF(thermostatID, tempLowF, null);
+					mCurrentCoolTempText.setText(Long.toString(tempLowF));
+				}
+				else {
+					tempLowC += 0.5;
+					if (restrictRange(difference, tempHighC, tempLowC)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 1.5 degrees C.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureLowC(thermostatID, tempLowC, null);
+					mCurrentCoolTempText.setText(Double.toString(tempLowC));
+				}
+				break;
             case R.id.temp_heat_down:
-                tempHigh -= 1;
-                mNestApi.setTargetTemperatureHighF(thermostatID, tempHigh, null);
-                mCurrentHeatTempText.setText(Long.toString(tempHigh));
-                break;
+				if (mThermostat.getTemperatureScale().equals( "F" )) {
+					tempHighF -= 1;
+					if (restrictRange(difference, tempHighF, tempLowF)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 3 degrees F.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureHighF(thermostatID, tempHighF, null);
+					mCurrentHeatTempText.setText(Long.toString(tempHighF));
+				}
+				else {
+					tempHighC -= 0.5;
+					if (restrictRange(difference, tempHighC, tempLowC)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 1.5 degrees C.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureHighC(thermostatID, tempHighC, null);
+					mCurrentHeatTempText.setText(Double.toString(tempHighC));
+				}
+				break;
             case R.id.temp_heat_up:
-                tempHigh += 1;
-                mNestApi.setTargetTemperatureHighF(thermostatID, tempHigh, null);
-                mCurrentHeatTempText.setText(Long.toString(tempHigh));
-                break;
+				if (mThermostat.getTemperatureScale().equals( "F" )) {
+					tempHighF += 1;
+					if (restrictRange(difference, tempHighF, tempLowF)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 3 degrees F.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureHighF(thermostatID, tempHighF, null);
+					mCurrentHeatTempText.setText(Long.toString(tempHighF));
+				}
+				else {
+					tempHighC += 0.5;
+					if (restrictRange(difference, tempHighC, tempLowC)) {
+						Toast.makeText(getApplicationContext(), "Cannot set target temperature closer than 1.5 degrees C.", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					mNestApi.setTargetTemperatureHighC(thermostatID, tempHighC, null);
+					mCurrentHeatTempText.setText(Double.toString(tempHighC));
+				}
+				break;
         }
     }
 
-    private void updateTempSingle(View v) {
+	private boolean restrictRange(double difference, double tempHigh, double tempLow) {
+		if ( tempHigh - tempLow < difference) {
+			return true;
+        }
+		return false;
+	}
+
+	private void updateTempSingle(View v) {
 
         if(mStructure.getAwayState() == Structure.AwayState.AWAY) {
             Toast.makeText(getApplicationContext(), "Cannot change target temperature while structure is away", Toast.LENGTH_LONG).show();
@@ -330,16 +415,52 @@ public class MainActivity extends ActionBarActivity implements
         }
 
         mPreviousTargetTempF = mCurrentTargetTempF;
+        mPreviousTargetTempC = mCurrentTargetTempC;
         switch (v.getId()) {
             case R.id.temp_up:
-                mCurrentTargetTempF += 1;
+				if (mThermostat.getTemperatureScale().equals( "F" )) {
+					mCurrentTargetTempF += 1;
+					if (restrictSingle(mCurrentTargetTempF, mCurrentTargetTempC)) {
+						Toast.makeText(getApplicationContext(), "Temperature F value is too high.", Toast.LENGTH_SHORT).show();
+						mCurrentTargetTempF -= 1;
+						return;
+					}
+				}
+				else {
+					mCurrentTargetTempC += 0.5;
+					if (restrictSingle(mCurrentTargetTempF, mCurrentTargetTempC)) {
+						Toast.makeText(getApplicationContext(), "Temperature C value is too high.", Toast.LENGTH_SHORT).show();
+						mCurrentTargetTempC -= 0.5;
+						return;
+					}
+				}
                 break;
             case R.id.temp_down:
-                mCurrentTargetTempF -= 1;
+				if (mThermostat.getTemperatureScale().equals( "F" )) {
+					mCurrentTargetTempF -= 1;
+					if (restrictSingle(mCurrentTargetTempF, mCurrentTargetTempC)) {
+						Toast.makeText(getApplicationContext(), "Temperature F value is too low.", Toast.LENGTH_SHORT).show();
+						mCurrentTargetTempF += 1;
+						return;
+					}
+				}
+				else {
+					mCurrentTargetTempC -= 0.5;
+					if (restrictSingle(mCurrentTargetTempF, mCurrentTargetTempC)) {
+						Toast.makeText(getApplicationContext(), "Temperature C value is too low.", Toast.LENGTH_SHORT).show();
+						mCurrentTargetTempC += 0.5;
+						return;
+					}
+				}
                 break;
         }
 
-        mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
+		if (mThermostat.getTemperatureScale().equals( "F" )) {
+			mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
+		}
+        else {
+			mCurrentTempText.setText(Double.toString(mCurrentTargetTempC));
+		}
 
         getQueue();
 
@@ -348,45 +469,74 @@ public class MainActivity extends ActionBarActivity implements
 
             if(!commandQueue.acceptsCommands()) {
                 Toast.makeText(getApplicationContext(), "Limit reached. Please try again later.", Toast.LENGTH_SHORT).show();
-                mCurrentTargetTempF = mPreviousTargetTempF;
-                mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
+				if (mThermostat.getTemperatureScale().equals( "F" )) {
+					mCurrentTargetTempF = mPreviousTargetTempF;
+					mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
+				}
+				else {
+					mCurrentTargetTempC = mPreviousTargetTempC;
+					mCurrentTempText.setText(Double.toString(mCurrentTargetTempC));
+				}
                 return;
             }
             commandQueue.addCommand(new ThermostatCommand() {
-                @Override
-                public void run() {
-                    mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), mCurrentTargetTempF, this);
-                }
+				@Override
+				public void run() {
+					if (mThermostat.getTemperatureScale().equals("F")) {
+						mNestApi.setTargetTemperatureF(mThermostat.getDeviceID(), mCurrentTargetTempF, this);
+					} else {
+						mNestApi.setTargetTemperatureC(mThermostat.getDeviceID(), mCurrentTargetTempC, this);
+					}
+				}
 
-                @Override
-                public void onError(int errorCode, String message) {
-                    if(message.equals("Too many requests")) { // Too many requests
-                        commandQueue.setLimit_reached(true);
-                        commandQueue.setLimit_reached_date(new Date());
-                        Toast.makeText(getApplicationContext(), "You have reached Nest's limits for this hour. Try again later.", Toast.LENGTH_LONG).show();
-                    }
-                    else if (message.equals("Temperature F value too high for lock temperature")){
-                        Toast.makeText(getApplicationContext(), "Temperature F value too high for lock temperature.", Toast.LENGTH_LONG).show();
-                    }
-                    else if (message.equals("Temperature F value too low for lock temperature")) {
-                        Toast.makeText(getApplicationContext(), "Temperature F value too low for lock temperature.", Toast.LENGTH_LONG).show();
-                    }
+				@Override
+				public void onError(int errorCode, String message) {
+					if (message.equals("Too many requests")) { // Too many requests
+						commandQueue.setLimit_reached(true);
+						commandQueue.setLimit_reached_date(new Date());
+						Toast.makeText(getApplicationContext(), "You have reached Nest's limits for this hour. Try again later.", Toast.LENGTH_LONG).show();
+					} else if (message.equals("Temperature F value too high for lock temperature.")) {
+						Toast.makeText(getApplicationContext(), "Temperature F value too high for lock temperature.", Toast.LENGTH_LONG).show();
+					} else if (message.equals("Temperature F value too low for lock temperature.")) {
+						Toast.makeText(getApplicationContext(), "Temperature F value too low for lock temperature.", Toast.LENGTH_LONG).show();
+					}
 
-                    mCurrentTargetTempF = mPreviousTargetTempF;
-                    mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
-                }
+					if (mThermostat.getTemperatureScale().equals("F")) {
+						mCurrentTargetTempF = mPreviousTargetTempF;
+						mCurrentTempText.setText(Long.toString(mCurrentTargetTempF));
+					}
+					else {
+						mCurrentTargetTempC = mPreviousTargetTempC;
+						mCurrentTempText.setText(Double.toString(mCurrentTargetTempC));
+					}
+				}
 
-                @Override
-                public void onComplete() {
-                    mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
-                    updateView();
+				@Override
+				public void onComplete() {
+					if (mThermostat.getTemperatureScale().equals("F")) {
+						mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+					}
+					else {
+						mCurrentTargetTempC = mThermostat.getTargetTemperatureC();
+					}
+					updateView();
 //                    Toast.makeText(getApplicationContext(), String.format("Set temp to: %d", mCurrentTargetTempF), Toast.LENGTH_LONG).show();
-                }
-            });
+				}
+			});
         }
 
         saveQueue();
     }
+
+	private boolean restrictSingle(long tempF, double tempC) {
+		if (tempF < 50 || tempF > 90) {
+			return true;
+		}
+		else if (tempC < 9 || tempC > 32) {
+			return true;
+		}
+		return false;
+	}
 
     private void updateView() {
         updateAmbientTempTextView();
@@ -396,7 +546,12 @@ public class MainActivity extends ActionBarActivity implements
 
     private void updateAmbientTempTextView() {
         if (mThermostat != null) {
-            mAmbientTempText.setText(Long.toString(mThermostat.getAmbientTemperatureF()));
+			if (mThermostat.getTemperatureScale().equals( "F" )) {
+				mAmbientTempText.setText(Long.toString(mThermostat.getAmbientTemperatureF()));
+			}
+			else {
+				mAmbientTempText.setText(Double.toString(mThermostat.getAmbientTemperatureC()));
+			}
         }
     }
 
@@ -407,6 +562,12 @@ public class MainActivity extends ActionBarActivity implements
     }
 
     private void updateThermostatViews() {
+		if (mStructure != null && mStructure.getThermostatCount() == 0) {
+			mCurrentTempText.setText(R.string.empty_structure);
+			mThermostatView.setBackgroundResource(R.drawable.empty_structure_drawable);
+			return;
+		}
+
         if (mThermostat == null || mStructure == null) {
             return;
         }
@@ -447,11 +608,23 @@ public class MainActivity extends ActionBarActivity implements
     }
 
     private void updateRangeControlView() {
-        mCurrentHeatTempText.setText(Long.toString(mThermostat.getTargetTemperatureHighF()));
-        mCurrentCoolTempText.setText(Long.toString(mThermostat.getTargetTemperatureLowF()));
+		final double tempDiffHigh;
+		final double tempDiffLow;
 
-        final long tempDiffHigh = mThermostat.getTargetTemperatureHighF() - mThermostat.getAmbientTemperatureF();
-        final long tempDiffLow = mThermostat.getTargetTemperatureLowF() - mThermostat.getAmbientTemperatureF();
+		if (mThermostat.getTemperatureScale().equals( "F" )) {
+			mCurrentHeatTempText.setText(Long.toString(mThermostat.getTargetTemperatureHighF()));
+			mCurrentCoolTempText.setText(Long.toString(mThermostat.getTargetTemperatureLowF()));
+
+			tempDiffHigh = mThermostat.getTargetTemperatureHighF() - mThermostat.getAmbientTemperatureF();
+			tempDiffLow = mThermostat.getTargetTemperatureLowF() - mThermostat.getAmbientTemperatureF();
+		}
+		else {
+			mCurrentHeatTempText.setText(Double.toString(mThermostat.getTargetTemperatureHighC()));
+			mCurrentCoolTempText.setText(Double.toString(mThermostat.getTargetTemperatureLowC()));
+
+			tempDiffHigh = mThermostat.getTargetTemperatureHighC() - mThermostat.getAmbientTemperatureC();
+			tempDiffLow = mThermostat.getTargetTemperatureLowC() - mThermostat.getAmbientTemperatureC();
+		}
 
         final int thermostatDrawable;
         if (tempDiffHigh < 0) {
@@ -465,16 +638,34 @@ public class MainActivity extends ActionBarActivity implements
     }
 
     private void updateSingleControlView() {
-        Structure.AwayState state = mStructure.getAwayState();
+
+		Structure.AwayState state = mStructure.getAwayState();
         if(state == Structure.AwayState.AWAY || state == Structure.AwayState.AUTO_AWAY) {
             mCurrentTempText.setText(R.string.thermostat_away);
             mThermostatView.setBackgroundResource(R.drawable.off_thermostat_drawable);
             return;
         }
 
-        mCurrentTempText.setText(Long.toString(mThermostat.getTargetTemperatureF()));
-        Log.v(TAG, "targetTempF: " + mThermostat.getTargetTemperatureF() + " ambientF: " + mThermostat.getAmbientTemperatureF());
-        final long tempDiffF = mThermostat.getTargetTemperatureF() - mThermostat.getAmbientTemperatureF();
+		long mCurrentTemperatureF;
+		double mCurrentTemperatureC;
+		final double tempDiffF;
+		if (mThermostat.getTemperatureScale().equals( "F" )) {
+			mCurrentTemperatureF = mThermostat.getTargetTemperatureF();
+
+			Log.v(TAG, "targetTempF: " + mThermostat.getTargetTemperatureF() + " ambientF: " + mThermostat.getAmbientTemperatureF());
+
+			tempDiffF = mThermostat.getTargetTemperatureF() - mThermostat.getAmbientTemperatureF();
+			mCurrentTempText.setText(Long.toString(mCurrentTemperatureF));
+		}
+		else {
+			mCurrentTemperatureC = mThermostat.getTargetTemperatureC();
+
+			Log.v(TAG, "targetTempC: " + mThermostat.getTargetTemperatureC() + " ambientC: " + mThermostat.getAmbientTemperatureC());
+
+			tempDiffF = mThermostat.getTargetTemperatureC() - mThermostat.getAmbientTemperatureC();
+			mCurrentTempText.setText(Double.toString(mCurrentTemperatureC));
+		}
+
 
         final int thermostatDrawable;
         switch (mThermostat.getHVACmode()) {
@@ -522,6 +713,18 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     public void onAuthenticationFailure(int errorCode) {
         Log.v(TAG, "Authentication failed with error: " + errorCode);
+		if ( errorCode == -999) { // when token has expired
+			Settings.clearAuthToken(this);
+			obtainAccessToken();
+		}
+		else if ( errorCode == -7) { // when user manually removed Works with nest connection
+			Settings.clearAuthToken(this);
+			obtainAccessToken();
+		}
+		else if ( errorCode == -5) { // The active or pending auth credentials were superseded by another call to auth
+			// What do here?
+			return;
+		}
     }
 
     private void fetchData(){
@@ -698,6 +901,7 @@ public class MainActivity extends ActionBarActivity implements
                 if (thermostat.getStructureID().equals(mStructure.getStructureID())) {
                     mThermostat = thermostat;
                     mCurrentTargetTempF = mThermostat.getTargetTemperatureF();
+					mCurrentTargetTempC = mThermostat.getTargetTemperatureC();
                     getSupportActionBar().setTitle(mThermostat.getName());
                     updateView();
                     break;

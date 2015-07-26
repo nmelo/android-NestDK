@@ -20,6 +20,13 @@ public class Settings {
     private static final String TOKEN_KEY = "token";
     private static final String EXPIRATION_KEY = "expiration";
 
+	public static void clearAuthToken(Context context) {
+		getPrefs(context).edit()
+				.putString(TOKEN_KEY, null)
+				.putLong(EXPIRATION_KEY, -1)
+				.commit();
+	}
+
     public static void saveAuthToken(Context context, AccessToken token) {
         getPrefs(context).edit()
                 .putString(TOKEN_KEY, token.getToken())

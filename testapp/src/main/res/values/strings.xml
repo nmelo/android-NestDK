@@ -17,6 +17,7 @@ limitations under the License.
     <string name="action_settings">Settings</string>
     <string name="thermostat_off">Off</string>
     <string name="thermostat_away">Away</string>
+    <string name="empty_structure">Empty</string>
     <string name="thermostat_auto_away">Auto Away</string>
     <string name="away_state_home">Home</string>
     <string name="away_state_away">Away</string>

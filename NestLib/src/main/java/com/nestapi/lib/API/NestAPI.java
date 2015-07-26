@@ -88,7 +88,7 @@ public final class NestAPI implements ValueEventListener {
      * @param tempC the new temperature, in celsius (in the range of 9 to 32)
      * @param listener an optional listener for success or failure
      */
-    public void setTargetTemperatureC(String thermostatID, Long tempC, CompletionListener listener) {
+    public void setTargetTemperatureC(String thermostatID, Double tempC, CompletionListener listener) {
         final String path = buildThermostatFieldPath(thermostatID, Keys.THERMOSTAT.TARGET_TEMP_C);
         sendRequest(path, tempC, listener);
     }
@@ -114,7 +114,7 @@ public final class NestAPI implements ValueEventListener {
      * @param tempC the new temperature, in celsius
      * @param listener an optional listener for success or failure
      */
-    public void setTargetTemperatureHighC(String thermostatID, Long tempC, CompletionListener listener) {
+    public void setTargetTemperatureHighC(String thermostatID, Double tempC, CompletionListener listener) {
         final String path = buildThermostatFieldPath(thermostatID, Keys.THERMOSTAT.TARGET_TEMP_HIGH_C);
         sendRequest(path, tempC, listener);
     }
@@ -140,7 +140,7 @@ public final class NestAPI implements ValueEventListener {
      * @param tempC the new temperature, in celsius
      * @param listener an optional listener for success or failure
      */
-    public void setTargetTemperatureLowC(String thermostatID, Long tempC, CompletionListener listener) {
+    public void setTargetTemperatureLowC(String thermostatID, Double tempC, CompletionListener listener) {
         final String path = buildThermostatFieldPath(thermostatID, Keys.THERMOSTAT.TARGET_TEMP_LOW_C);
         sendRequest(path, tempC, listener);
     }

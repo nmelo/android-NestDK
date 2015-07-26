@@ -15,4 +15,5 @@ limitations under the License.
     <color name="cool">#006BEC</color>
     <color name="white">#FFFFFF</color>
     <color name="off">#222222</color>
+	<color name="empty">#2e1523</color>
 </resources>
