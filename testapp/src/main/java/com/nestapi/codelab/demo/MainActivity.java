@@ -138,6 +138,73 @@ public class MainActivity extends ActionBarActivity implements
         initializeDrawer();
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelable(THERMOSTAT_KEY, mThermostat);
+        outState.putParcelable(STRUCTURE_KEY, mStructure);
+    }
+
+    @Override
+    public void onRestoreInstanceState (Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if (savedInstanceState != null) {
+            mThermostat = savedInstanceState.getParcelable(THERMOSTAT_KEY);
+            mStructure = savedInstanceState.getParcelable(STRUCTURE_KEY);
+            updateView();
+        }
+    }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+//        mNestApi.removeUpdateListener(mUpdateListener);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        return drawerToggle.onOptionsItemSelected(item) || super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        // If the nav drawer is open, hide action items related to the content view
+
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    private void obtainAccessToken() {
+        Log.v(TAG, "starting auth flow...");
+        final ClientMetadata metadata = new ClientMetadata.Builder()
+                .setClientID(Constants.CLIENT_ID)
+                .setClientSecret(Constants.CLIENT_SECRET)
+                .setRedirectURL(Constants.REDIRECT_URL)
+                .build();
+        AuthManager.launchAuthFlow(this, AUTH_TOKEN_REQUEST_CODE, metadata);
+    }
+
     private void initializeDrawer() {
 
         // set a custom shadow that overlays the main content when the drawer opens
@@ -169,40 +236,6 @@ public class MainActivity extends ActionBarActivity implements
         drawerLayout.setDrawerListener(drawerToggle);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setHomeButtonEnabled(true);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        return drawerToggle.onOptionsItemSelected(item) || super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        // If the nav drawer is open, hide action items related to the content view
-
-        return super.onPrepareOptionsMenu(menu);
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putParcelable(THERMOSTAT_KEY, mThermostat);
-        outState.putParcelable(STRUCTURE_KEY, mStructure);
-    }
-
-    private void obtainAccessToken() {
-        Log.v(TAG, "starting auth flow...");
-        final ClientMetadata metadata = new ClientMetadata.Builder()
-                .setClientID(Constants.CLIENT_ID)
-                .setClientSecret(Constants.CLIENT_SECRET)
-                .setRedirectURL(Constants.REDIRECT_URL)
-                .build();
-        AuthManager.launchAuthFlow(this, AUTH_TOKEN_REQUEST_CODE, metadata);
     }
 
     private View.OnClickListener mStructureAwayClickListener = new View.OnClickListener() {
@@ -738,11 +771,6 @@ public class MainActivity extends ActionBarActivity implements
         mNestApi.addUpdateListener(mUpdateListener);
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        mNestApi.removeUpdateListener(mUpdateListener);
-    }
 
     // ******************************************************************************************
     // Handle nest updates
